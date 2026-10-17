@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ConnectPulse - Social App</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            user-select: none;
+        }
+        body {
+            background-color: #121212;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Toast Notification System (Replaces Browser Popup) */
+        #toast-notification {
+            position: fixed;
+            bottom: 75px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0, 210, 255, 0.95);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 13px;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            pointer-events: none;
+        }
+        #toast-notification.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Splash / Intro Screen */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        #splash-screen h1 {
+            color: #00d2ff;
+            font-size: 32px;
+            margin-bottom: 10px;
+            animation: pulse 1.5s infinite;
+        }
+        #splash-screen p {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Top Header & Search Bar */
+        header {
+            background: #1a1a1a;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .app-title {
+            color: #00d2ff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .search-box {
+            display: flex;
+            background: #2a2a2a;
+            border-radius: 20px;
+            padding: 6px 12px;
+            align-items: center;
+            gap: 8px;
+        }
+        .search-box input {
+            background: none;
+            border: none;
+            color: #fff;
+            outline: none;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        /* App Container */
+        .app-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            background: #121212;
+            overflow-y: auto;
+            padding-bottom: 70px;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        /* --- 1. Home Page & Post Creation --- */
+        .create-post-card {
+            background: #1a1a1a;
+            padding: 12px;
+            margin: 10px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .create-post-top {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .create-post-top input[type="text"] {
+            flex: 1;
+            background: #2a2a2a;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: #fff;
+            outline: none;
+        }
+        .upload-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #2a2a2a;
+            padding-top: 10px;
+        }
+        .upload-label {
+            background: #2a2a2a;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .upload-label input {
+            display: none;
+        }
+        .post-submit-btn {
+            background: #00d2ff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+        }
+        .preview-media-box {
+            display: none;
+            max-height: 150px;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #000;
+        }
+        .preview-media-box img, .preview-media-box video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .post-card {
+            background: #1a1a1a;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            gap: 10px;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #00d2ff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #000;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .post-body {
+            padding: 10px;
+            font-size: 14px;
+            color: #ddd;
+        }
+        .post-media {
+            width: 100%;
+            max-height: 350px;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .post-media img, .post-media video {
+            width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+        }
+        .post-actions {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            border-top: 1px solid #2a2a2a;
+            font-size: 14px;
+            color: #aaa;
+        }
+        .post-actions span {
+            cursor: pointer;
+        }
+
+        /* --- 2. Reels Page --- */
+        #reels-page {
+            background: #000;
+            padding-bottom: 0;
+        }
+        .reel-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+        .reel-actions {
+            position: absolute;
+            right: 15px;
+            bottom: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        .reel-btn {
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: #fff;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* --- 3. Friends Page --- */
+        .friend-section-title {
+            padding: 15px 15px 5px 15px;
+            font-size: 16px;
+            color: #00d2ff;
+        }
+        .friend-card {
+            background: #1a1a1a;
+            margin: 8px 15px;
+            padding: 12px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .friend-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .friend-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-accept {
+            background: #00d2ff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+        }
+        .btn-delete {
+            background: #333;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            color: #fff;
+        }
+
+        /* --- 4. Chat & Call Page --- */
+        .chat-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            gap: 12px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+        }
+        .chat-room {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+        .chat-room-header {
+            background: #1a1a1a;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        .call-icons {
+            display: flex;
+            gap: 15px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .messages-area {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        .message.incoming {
+            background: #262626;
+            align-self: flex-start;
+        }
+        .message.outgoing {
+            background: #0084ff;
+            align-self: flex-end;
+        }
+        .chat-input-bar {
+            display: flex;
+            padding: 10px;
+            background: #1a1a1a;
+            gap: 10px;
+        }
+        .chat-input-bar input {
+            flex: 1;
+            background: #2a2a2a;
+            border: none;
+            padding: 10px;
+            border-radius: 20px;
+            color: #fff;
+            outline: none;
+        }
+        .chat-input-bar button {
+            background: #0084ff;
+            border: none;
+            color: #fff;
+            padding: 0 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        /* Call Screen Modal */
+        #call-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #111;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            gap: 20px;
+        }
+        .caller-avatar {
+            width: 100px;
+            height: 100px;
+            background: #00d2ff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            color: #000;
+            font-weight: bold;
+        }
+        .end-call-btn {
+            background: #ff3366;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* --- 5. Profile Page --- */
+        .profile-cover-container {
+            position: relative;
+            width: 100%;
+            height: 160px;
+            background: #252525;
+        }
+        .cover-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .profile-avatar-wrapper {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .profile-avatar-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #121212;
+            background: #00d2ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #000;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .profile-avatar-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-details-box {
+            margin-top: 45px;
+            text-align: center;
+            padding: 0 15px;
+        }
+        .edit-profile-box {
+            padding: 15px;
+            margin: 15px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .edit-profile-box label {
+            font-size: 12px;
+            color: #00d2ff;
+            font-weight: bold;
+        }
+        .edit-profile-box input[type="text"], .edit-profile-box textarea {
+            background: #2a2a2a;
+            border: 1px solid #333;
+            padding: 10px;
+            color: #fff;
+            border-radius: 5px;
+            outline: none;
+            font-size: 14px;
+        }
+        .file-upload-btn {
+            background: #2a2a2a;
+            border: 1px dashed #00d2ff;
+            padding: 10px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .file-upload-btn input {
+            display: none;
+        }
+        .save-btn {
+            background: #00d2ff;
+            border: none;
+            padding: 10px;
+            font-weight: bold;
+            color: #000;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        /* Bottom Navigation Bar */
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid #333;
+            z-index: 100;
+        }
+        .nav-item {
+            background: none;
+            border: none;
+            color: #777;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+        }
+        .nav-item.active {
+            color: #00d2ff;
+        }
+        .nav-icon {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-notification">Message</div>
+
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <h1>ConnectPulse</h1>
+        <p>Developed by "ᴜɴᴋɴᴏᴡɴ "</p>
+    </div>
+
+    <!-- Top Header & Search -->
+    <header>
+        <div class="header-top">
+            <span class="app-title" id="app-header-title">ConnectPulse</span>
+            <span>🔔</span>
+        </div>
+        <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="global-search" placeholder="Search people..." oninput="handleSearch(this.value)" />
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        
+        <!-- 1. Home Page -->
+        <div id="home-page" class="page active">
+            <div class="create-post-card">
+                <div class="create-post-top">
+                    <div class="avatar" id="home-user-avatar">U</div>
+                    <input type="text" id="post-input" placeholder="What's on your mind?" />
+                </div>
+
+                <div class="preview-media-box" id="post-media-preview"></div>
+
+                <div class="upload-options">
+                    <label class="upload-label">
+                        📷 Add Photo
+                        <input type="file" id="post-photo-input" accept="image/*" onchange="previewPostMedia('image')" />
+                    </label>
+
+                    <label class="upload-label">
+                        🎥 Add Video
+                        <input type="file" id="post-video-input" accept="video/*" onchange="previewPostMedia('video')" />
+                    </label>
+
+                    <button class="post-submit-btn" onclick="createNewPost()">Post</button>
+                </div>
+            </div>
+
+            <div id="posts-container">
+                <div class="post-card">
+                    <div class="post-header">
+                        <div class="avatar">R</div>
+                        <div>
+                            <b>Rahim Ahmed</b>
+                            <p style="font-size: 11px; color:#888;">2 hours ago</p>
+                        </div>
+                    </div>
+                    <div class="post-body">Welcome to ConnectPulse! Enjoy posting photos, videos & chatting! 🔥</div>
+                    <div class="post-actions">
+                        <span onclick="likePost(this)">❤️ Like (12)</span>
+                        <span onclick="showToast('Comment section opened')">💬 Comment</span>
+                        <span onclick="showToast('Post Shared')">↗️ Share</span>
+                        <span onclick="showToast('Post Saved')">🔖 Save</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Reels Page -->
+        <div id="reels-page" class="page">
+            <div class="reel-card">
+                <div style="text-align: center; color: #777;">
+                    <h2>🎬 Trending Reels Video</h2>
+                    <p>Swipe up or down</p>
+                </div>
+                <div class="reel-actions">
+                    <button class="reel-btn" onclick="likeReel(this)">❤️</button>
+                    <button class="reel-btn" onclick="showToast('Comment section')">💬</button>
+                    <button class="reel-btn" onclick="showToast('Reel Shared')">↗️</button>
+                    <button class="reel-btn" onclick="showToast('Reel Saved')">🔖</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Friends Page -->
+        <div id="friends-page" class="page">
+            <div class="friend-section-title">Friend Requests (2)</div>
+            <div class="friend-card">
+                <div class="friend-info">
+                    <div class="avatar">K</div>
+                    <div>
+                        <b>Karim Mia</b>
+                        <p style="font-size:12px; color:#888;">3 mutual friends</p>
+                    </div>
+                </div>
+                <div class="friend-btns">
+                    <button class="btn-accept" onclick="acceptRequest(this)">Confirm</button>
+                    <button class="btn-delete" onclick="deleteRequest(this)">Delete</button>
+                </div>
+            </div>
+
+            <div class="friend-section-title">People You May Know</div>
+            <div class="friend-card">
+                <div class="friend-info">
+                    <div class="avatar">S</div>
+                    <div>
+                        <b>Sakib Khan</b>
+                        <p style="font-size:12px; color:#888;">5 mutual friends</p>
+                    </div>
+                </div>
+                <button class="btn-accept" onclick="sendFriendRequest(this)">Add Friend</button>
+            </div>
+        </div>
+
+        <!-- 4. Chat Page -->
+        <div id="chat-page" class="page">
+            <div id="chat-list-view">
+                <div class="friend-section-title">Messenger Chats</div>
+                <div class="chat-list-item" onclick="openChatRoom('Rahim Ahmed')">
+                    <div class="avatar">R</div>
+                    <div>
+                        <b>Rahim Ahmed</b>
+                        <p style="font-size: 13px; color: #888;">Hey, how are you?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Chat Room -->
+            <div id="chat-room-box" class="chat-room">
+                <div class="chat-room-header">
+                    <button onclick="closeChatRoom()" style="background:none; border:none; color:#fff; font-size:16px;">⬅️ Back</button>
+                    <b id="active-chat-name">Rahim Ahmed</b>
+                    <div class="call-icons">
+                        <span onclick="startCall('audio')">📞</span>
+                        <span onclick="startCall('video')">📹</span>
+                    </div>
+                </div>
+                <div class="messages-area" id="chat-messages">
+                    <div class="message incoming">Hello! How are you doing?</div>
+                </div>
+                <div class="chat-input-bar">
+                    <input type="text" id="chat-input-field" placeholder="Type a message..." />
+                    <button onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call Screen Modal -->
+        <div id="call-screen">
+            <div class="caller-avatar" id="call-avatar-name">R</div>
+            <h2 id="call-status-text">Calling...</h2>
+            <button class="end-call-btn" onclick="endCall()">End Call</button>
+        </div>
+
+        <!-- 5. Profile Page -->
+        <div id="profile-page" class="page">
+            <div class="profile-cover-container">
+                <img id="profile-cover-img" class="cover-photo" src="https://via.placeholder.com/600x200/1a1a1a/00d2ff?text=Cover+Photo" alt="Cover" />
+                <div class="profile-avatar-wrapper">
+                    <div id="profile-avatar-box" class="profile-avatar-img">U</div>
+                </div>
+            </div>
+
+            <div class="profile-details-box">
+                <h2 id="profile-display-name">User Name</h2>
+                <p style="color: #888; font-size: 13px; margin-top: 5px;" id="profile-display-bio">Life is awesome!</p>
+            </div>
+
+            <div class="edit-profile-box">
+                <h3>Customize Profile</h3>
+                
+                <label>Display Name</label>
+                <input type="text" id="input-name" placeholder="Enter your name" value="User Name" />
+
+                <label>Bio</label>
+                <textarea id="input-bio" placeholder="Write your bio">Life is awesome!</textarea>
+
+                <label>Profile Picture</label>
+                <label class="file-upload-btn">
+                    📷 Upload Profile Picture from Phone
+                    <input type="file" id="input-profile-file" accept="image/*" onchange="previewProfilePic(this)" />
+                </label>
+
+                <label>Cover Photo</label>
+                <label class="file-upload-btn">
+                    🖼️ Upload Cover Photo from Phone
+                    <input type="file" id="input-cover-file" accept="image/*" onchange="previewCoverPhoto(this)" />
+                </label>
+
+                <button class="save-btn" onclick="saveProfile()">Save Profile Changes</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav>
+        <button class="nav-item active" onclick="switchPage('home', this)">
+            <span class="nav-icon">🏠</span>
+            <span>Home</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('reels', this)">
+            <span class="nav-icon">▶️</span>
+            <span>Reels</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('friends', this)">
+            <span class="nav-icon">👥</span>
+            <span>Friends</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('chat', this)">
+            <span class="nav-icon">💬</span>
+            <span>Chat</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('profile', this)">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+    </nav>
+
+    <script>
+        // Custom Toast Notification Logic
+        let toastTimeout;
+        function showToast(text) {
+            const toast = document.getElementById('toast-notification');
+            toast.innerText = text;
+            toast.classList.add('show');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1800);
+        }
+
+        // Media Variables for Post
+        let selectedPostMediaUrl = "";
+        let selectedPostMediaType = "";
+        let uploadedProfilePicUrl = "";
+        let uploadedCoverPicUrl = "";
+
+        // Hide Splash Screen
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.display = 'none', 500);
+        }, 1500);
+
+        // Page Switching
+        function switchPage(pageName, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            element.classList.add('active');
+            document.getElementById(`${pageName}-page`).classList.add('active');
+
+            if(pageName === 'chat') {
+                document.getElementById('chat-list-view').style.display = 'block';
+                document.getElementById('chat-room-box').style.display = 'none';
+            }
+        }
+
+        // Preview Media for New Post
+        function previewPostMedia(type) {
+            const previewBox = document.getElementById('post-media-preview');
+            let fileInput = type === 'image' ? document.getElementById('post-photo-input') : document.getElementById('post-video-input');
+            const file = fileInput.files[0];
+
+            if (file) {
+                selectedPostMediaUrl = URL.createObjectURL(file);
+                selectedPostMediaType = type;
+                previewBox.style.display = 'block';
+
+                if (type === 'image') {
+                    previewBox.innerHTML = `<img src="${selectedPostMediaUrl}" alt="Preview" />`;
+                } else {
+                    previewBox.innerHTML = `<video src="${selectedPostMediaUrl}" controls></video>`;
+                }
+                showToast(type === 'image' ? 'Photo attached' : 'Video attached');
+            }
+        }
+
+        // Post Creation
+        function createNewPost() {
+            const input = document.getElementById('post-input');
+            const text = input.value.trim();
+            const userName = document.getElementById('profile-display-name').innerText;
+
+            if (text !== "" || selectedPostMediaUrl !== "") {
+                const container = document.getElementById('posts-container');
+                const newPost = document.createElement('div');
+                newPost.className = 'post-card';
+
+                let mediaHTML = "";
+                if (selectedPostMediaUrl !== "") {
+                    if (selectedPostMediaType === 'image') {
+                        mediaHTML = `<div class="post-media"><img src="${selectedPostMediaUrl}" alt="Post Image" /></div>`;
+                    } else if (selectedPostMediaType === 'video') {
+                        mediaHTML = `<div class="post-media"><video src="${selectedPostMediaUrl}" controls></video></div>`;
+                    }
+                }
+
+                let avatarHTML = uploadedProfilePicUrl 
+                    ? `<img src="${uploadedProfilePicUrl}" alt="Avatar" />` 
+                    : (userName[0] || 'U');
+
+                newPost.innerHTML = `
+                    <div class="post-header">
+                        <div class="avatar">${avatarHTML}</div>
+                        <div>
+                            <b>${userName}</b>
+                            <p style="font-size: 11px; color:#888;">Just now</p>
+                        </div>
+                    </div>
+                    ${text ? `<div class="post-body">${text}</div>` : ''}
+                    ${mediaHTML}
+                    <div class="post-actions">
+                        <span onclick="likePost(this)">❤️ Like (0)</span>
+                        <span onclick="showToast('Comment section opened')">💬 Comment</span>
+                        <span onclick="showToast('Post Shared')">↗️ Share</span>
+                        <span onclick="showToast('Post Saved')">🔖 Save</span>
+                    </div>
+                `;
+                container.prepend(newPost);
+
+                // Reset Inputs
+                input.value = '';
+                selectedPostMediaUrl = "";
+                selectedPostMediaType = "";
+                document.getElementById('post-media-preview').style.display = 'none';
+                document.getElementById('post-media-preview').innerHTML = '';
+
+                showToast('Post created successfully!');
+            }
+        }
+
+        function likePost(btn) {
+            btn.style.color = '#ff3366';
+            btn.innerText = '❤️ Liked';
+            showToast('Post Liked! ❤️');
+        }
+
+        function likeReel(btn) {
+            btn.style.color = '#ff3366';
+            showToast('Reel Liked! ❤️');
+        }
+
+        // Friend Actions
+        function acceptRequest(btn) {
+            const card = btn.closest('.friend-card');
+            card.innerHTML = '<p style="color: #00d2ff; width:100%; text-align:center;">Friend Request Accepted!</p>';
+            showToast('Friend Request Confirmed!');
+        }
+
+        function deleteRequest(btn) {
+            btn.closest('.friend-card').remove();
+            showToast('Friend Request Removed!');
+        }
+
+        function sendFriendRequest(btn) {
+            btn.innerText = 'Request Sent';
+            btn.style.background = '#333';
+            btn.style.color = '#888';
+            showToast('Friend Request Sent!');
+        }
+
+        // Chat Actions
+        function openChatRoom(name) {
+            document.getElementById('chat-list-view').style.display = 'none';
+            document.getElementById('chat-room-box').style.display = 'flex';
+            document.getElementById('active-chat-name').innerText = name;
+        }
+
+        function closeChatRoom() {
+            document.getElementById('chat-list-view').style.display = 'block';
+            document.getElementById('chat-room-box').style.display = 'none';
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input-field');
+            const text = input.value.trim();
+            if(text !== "") {
+                const area = document.getElementById('chat-messages');
+                const msg = document.createElement('div');
+                msg.className = 'message outgoing';
+                msg.innerText = text;
+                area.appendChild(msg);
+                input.value = '';
+                area.scrollTop = area.scrollHeight;
+
+                setTimeout(() => {
+                    const reply = document.createElement('div');
+                    reply.className = 'message incoming';
+                    reply.innerText = "That sounds cool! 👍";
+                    area.appendChild(reply);
+                    area.scrollTop = area.scrollHeight;
+                }, 1000);
+            }
+        }
+
+        // Call Simulation
+        function startCall(type) {
+            const screen = document.getElementById('call-screen');
+            const status = document.getElementById('call-status-text');
+            const name = document.getElementById('active-chat-name').innerText;
+            
+            document.getElementById('call-avatar-name').innerText = name[0];
+            status.innerText = type === 'video' ? 'Video Calling...' : 'Audio Calling...';
+            screen.style.display = 'flex';
+        }
+
+        function endCall() {
+            document.getElementById('call-screen').style.display = 'none';
+            showToast('Call ended');
+        }
+
+        // Profile Photo Handlers
+        function previewProfilePic(input) {
+            const file = input.files[0];
+            if (file) {
+                uploadedProfilePicUrl = URL.createObjectURL(file);
+                showToast('Profile photo selected');
+            }
+        }
+
+        function previewCoverPhoto(input) {
+            const file = input.files[0];
+            if (file) {
+                uploadedCoverPicUrl = URL.createObjectURL(file);
+                showToast('Cover photo selected');
+            }
+        }
+
+        // Save Profile Changes
+        function saveProfile() {
+            const name = document.getElementById('input-name').value;
+            const bio = document.getElementById('input-bio').value;
+
+            document.getElementById('profile-display-name').innerText = name;
+            document.getElementById('profile-display-bio').innerText = bio;
+
+            // Profile Picture Update
+            const avatarBox = document.getElementById('profile-avatar-box');
+            const homeAvatar = document.getElementById('home-user-avatar');
+
+            if (uploadedProfilePicUrl) {
+                avatarBox.innerHTML = `<img src="${uploadedProfilePicUrl}" alt="Avatar" />`;
+                homeAvatar.innerHTML = `<img src="${uploadedProfilePicUrl}" alt="Avatar" />`;
+            } else {
+                avatarBox.innerText = name[0] || 'U';
+                homeAvatar.innerText = name[0] || 'U';
+            }
+
+            // Cover Photo Update
+            if (uploadedCoverPicUrl) {
+                document.getElementById('profile-cover-img').src = uploadedCoverPicUrl;
+            }
+
+            showToast('Profile updated successfully!');
+        }
+
+        function handleSearch(query) {
+            // Search function
+        }
+    </script>
+</body>
+</html>
